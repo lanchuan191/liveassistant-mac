@@ -1,0 +1,44 @@
+name: Build Mac (Intel)
+
+on:
+  workflow_dispatch:
+  push:
+    tags: [ 'v*' ]
+
+jobs:
+  build-mac:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Unpack source zip
+        run: unzip -q LiveAssistant-mac-src.zip -d app
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+        working-directory: app
+
+      - name: Package for macOS Intel (x64)
+        run: npx @electron/packager . LiveAssistant --platform=darwin --arch=x64 --out=../dist --overwrite
+        working-directory: app
+
+      - name: Create DMG installer
+        run: hdiutil create -volname "LiveAssistant" -srcfolder dist/LiveAssistant-darwin-x64/LiveAssistant.app -ov -format UDZO dist/LiveAssistant-mac-x64.dmg
+
+      - name: Zip app bundle
+        run: |
+          cd dist
+          zip -r -y LiveAssistant-mac-x64.zip LiveAssistant-darwin-x64/
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: LiveAssistant-mac-x64
+          path: |
+            dist/LiveAssistant-mac-x64.dmg
+            dist/LiveAssistant-mac-x64.zip
+          retention-days: 30
